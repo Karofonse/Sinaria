@@ -1,0 +1,73 @@
+# Desarrollo local. Requiere Docker Desktop / Docker Engine. Credenciales de desarrollo: NO usar en sandbox/prod.
+name: sonaria
+
+x-api-env: &api-env
+  APP_ENV: development
+  DATABASE_URL: postgresql+psycopg://sonaria:${POSTGRES_PASSWORD:-sonaria_dev}@postgres:5432/sonaria
+  REDIS_URL: redis://redis:6379/0
+  JWT_SECRET: ${JWT_SECRET:-dev-only-insecure-secret-change-me}
+  DOWNLOAD_URL_SECRET: ${DOWNLOAD_URL_SECRET:-dev-only-insecure-secret-change-me}
+  CORS_ORIGINS: http://localhost:3000
+  STORAGE_LOCAL_DIR: /app/.data/storage
+  DEFAULT_PROVIDER: mock
+  FAL_ENABLED: "false"
+  STABILITY_ENABLED: "false"
+  PAYMENTS_ENABLED: "false"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: sonaria
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sonaria_dev}
+      POSTGRES_DB: sonaria
+    ports: ["127.0.0.1:5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sonaria -d sonaria"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "no"]
+    ports: ["127.0.0.1:6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    build: ./apps/api
+    environment: *api-env
+    command: ["sh", "-c", "alembic upgrade head && python -m app.seed"]
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  api:
+    build: ./apps/api
+    environment: *api-env
+    ports: ["127.0.0.1:8000:8000"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+
+  worker:
+    build: ./apps/api
+    environment: *api-env
+    command: ["python", "-m", "app.worker"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+
+  web:
+    build: ./apps/web
+    environment:
+      API_INTERNAL_URL: http://api:8000
+    ports: ["127.0.0.1:3000:3000"]
+    depends_on: [api]
+
+volumes:
+  pgdata:

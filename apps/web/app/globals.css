@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+@theme {
+  --color-midnight: #0a0e22;
+  --color-night: #111633;
+  --color-surface: #161b3d;
+  --color-surface-2: #1d2350;
+  --color-violet-deep: #2a1557;
+  --color-plum: #3d1f6e;
+  --color-lavender: #c9b8ff;
+  --color-lavender-soft: #e6dcff;
+  --color-mist: #a7a3c7;
+  --color-line: rgb(201 184 255 / 0.14);
+  --color-danger: #ff8fa3;
+  --color-success: #9be8c6;
+  --color-warning: #ffd58a;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+  body {
+    @apply text-lavender-soft antialiased;
+    min-height: 100dvh;
+    background:
+      radial-gradient(1100px 620px at 8% -12%, rgb(61 31 110 / 0.55), transparent 60%),
+      radial-gradient(900px 520px at 108% 8%, rgb(27 42 107 / 0.5), transparent 58%),
+      var(--color-midnight);
+    background-attachment: fixed;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-lavender);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
