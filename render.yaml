@@ -1,0 +1,52 @@
+# Blueprint de Render para PREVIEW (no producción).
+# Limitación: el almacenamiento es disco local y no se comparte entre servicios, así que el worker
+# corre dentro del mismo servicio que la API. En producción el worker va aparte y el almacenamiento es R2.
+# La web (Next.js) se despliega en Vercel con root directory apps/web y API_INTERNAL_URL apuntando a esta API.
+services:
+  - type: web
+    name: sonaria-preview-api
+    runtime: docker
+    rootDir: apps/api
+    dockerfilePath: ./Dockerfile
+    dockerCommand: sh -c "python -m app.worker & exec uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers"
+    healthCheckPath: /v1/health
+    envVars:
+      - key: APP_ENV
+        value: sandbox
+      - key: DATABASE_URL
+        fromDatabase:
+          name: sonaria-preview-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: sonaria-preview-redis
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DOWNLOAD_URL_SECRET
+        generateValue: true
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: CORS_ORIGINS
+        sync: false  # URL de la web en Vercel, p. ej. https://sonaria-preview.vercel.app
+      - key: STORAGE_LOCAL_DIR
+        value: /app/.data/storage
+      - key: DEFAULT_PROVIDER
+        value: mock
+      - key: FAL_ENABLED
+        value: "false"
+      - key: STABILITY_ENABLED
+        value: "false"
+      - key: PAYMENTS_ENABLED
+        value: "false"
+
+  - type: keyvalue
+    name: sonaria-preview-redis
+    plan: free
+    maxmemoryPolicy: noeviction
+    ipAllowList: []
+
+databases:
+  - name: sonaria-preview-db
+    plan: free
